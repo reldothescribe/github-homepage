@@ -107,6 +107,57 @@ body {
     font-weight: 500;
 }
 
+.projects {
+    margin-bottom: 20px;
+}
+
+.projects h2 {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    color: var(--accent-color);
+    text-align: center;
+}
+
+.project-grid {
+    display: grid;
+    gap: 15px;
+}
+
+.project-card {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--text-color);
+    transition: all 0.3s ease;
+}
+
+.project-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent-color);
+    box-shadow: 0 10px 30px rgba(168, 85, 247, 0.2);
+}
+
+.project-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.project-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--accent-color);
+}
+
+.project-desc {
+    font-size: 0.9rem;
+    color: #a0a0c0;
+}
+
 .about, .skills {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
