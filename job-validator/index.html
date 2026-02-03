@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReldoJobValidator - Token-Weighted Job Validation</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --card: #12121a;
+            --border: #2a2a3a;
+            --text: #e0e0e0;
+            --muted: #888;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle { color: var(--muted); font-size: 0.95rem; }
+        
+        .wallet-section {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        button:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        button.secondary { background: var(--card); border: 1px solid var(--border); }
+        button.secondary:hover { border-color: var(--accent); }
+        
+        .status {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-top: 0.5rem;
+        }
+        
+        .status.connected { color: var(--success); }
+        .status.error { color: var(--danger); }
+        
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+        
+        .tab {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--muted);
+        }
+        
+        .tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        
+        .panel { display: none; }
+        .panel.active { display: block; }
+        
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        textarea { min-height: 100px; resize: vertical; }
+        
+        .job-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+        
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        
+        .job-id { 
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        
+        .job-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-open { background: #1e3a5f; color: #60a5fa; }
+        .status-submitted { background: #422006; color: #fbbf24; }
+        .status-approved { background: #064e3b; color: #34d399; }
+        .status-rejected { background: #450a0a; color: #f87171; }
+        .status-cancelled { background: #27272a; color: #a1a1aa; }
+        
+        .job-description {
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+            word-break: break-word;
+        }
+        
+        .job-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-bottom: 1rem;
+        }
+        
+        .job-meta span {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .job-meta .value {
+            color: var(--text);
+            font-weight: 500;
+        }
+        
+        .vote-bar {
+            height: 8px;
+            background: var(--danger);
+            border-radius: 4px;
+            margin: 0.75rem 0;
+            overflow: hidden;
+        }
+        
+        .vote-bar .approve {
+            height: 100%;
+            background: var(--success);
+            transition: width 0.3s;
+        }
+        
+        .vote-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        
+        .vote-info .approve-text { color: var(--success); }
+        .vote-info .reject-text { color: var(--danger); }
+        
+        .job-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .job-actions button {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--muted);
+        }
+        
+        .info-box {
+            background: #1e1b4b;
+            border: 1px solid #4338ca;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .info-box h4 {
+            color: #a5b4fc;
+            margin-bottom: 0.5rem;
+        }
+        
+        .address {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--accent);
+            word-break: break-all;
+        }
+        
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+        
+        footer a { color: var(--muted); }
+        footer a:hover { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🗳️ ReldoJobValidator</h1>
+            <p class="subtitle">Token-weighted job validation on Base. $RELDO holders vote on work quality.</p>
+            
+            <div class="wallet-section">
+                <button id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
+                <button class="secondary" onclick="window.open('https://basescan.org/address/0x8d0FFA43b76367AF2ADbE2fD78Ca2d70bD460532', '_blank')">View Contract</button>
+            </div>
+            <p id="walletStatus" class="status">Not connected</p>
+        </header>
+        
+        <div class="info-box">
+            <h4>How it works</h4>
+            <p>1. Post a job with ETH bounty → 2. Worker submits proof → 3. $RELDO holders vote (need 1000+ tokens) → 4. 67% approval releases funds to worker, otherwise refunded to poster. Voters on winning side split 1%.</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showPanel('jobs')">Browse Jobs</button>
+            <button class="tab" onclick="showPanel('create')">Create Job</button>
+            <button class="tab" onclick="showPanel('my')">My Activity</button>
+        </div>
+        
+        <div id="jobs-panel" class="panel active">
+            <div id="jobsList">
+                <div class="empty-state">
+                    <p>Connect wallet to load jobs</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="create-panel" class="panel">
+            <div class="card">
+                <h3>Create New Job</h3>
+                <div class="form-group">
+                    <label>Job Description</label>
+                    <textarea id="jobDescription" placeholder="Describe the work you need done..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Bounty (ETH)</label>
+                    <input type="number" id="jobBounty" step="0.001" min="0.001" placeholder="0.01">
+                </div>
+                <button onclick="createJob()">Create Job</button>
+            </div>
+        </div>
+        
+        <div id="my-panel" class="panel">
+            <div id="myActivity">
+                <div class="empty-state">
+                    <p>Connect wallet to view your activity</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Contract: <a href="https://basescan.org/address/0x8d0FFA43b76367AF2ADbE2fD78Ca2d70bD460532" target="_blank">0x8d0F...0532</a></p>
+            <p>$RELDO Token: <a href="https://basescan.org/token/0x389e4cc15ace2f0993d61f0ff52c1f424915fb07" target="_blank">0x389e...fb07</a></p>
+            <p style="margin-top: 1rem;"><a href="https://reldothescribe.github.io">← Back to Reldo</a></p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.umd.min.js"></script>
+    <script>
+        const CONTRACT_ADDRESS = '0x8d0FFA43b76367AF2ADbE2fD78Ca2d70bD460532';
+        const RELDO_TOKEN = '0x389e4cc15ace2f0993d61f0ff52c1f424915fb07';
+        const BASE_CHAIN_ID = '0x2105'; // 8453
+        
+        const CONTRACT_ABI = [
+            "function jobCount() view returns (uint256)",
+            "function jobs(uint256) view returns (address poster, address worker, uint256 bounty, string description, string submissionHash, uint8 status, uint256 votingEnds, uint256 approveWeight, uint256 rejectWeight, uint256 totalVoterWeight)",
+            "function getJob(uint256 jobId) view returns (address poster, address worker, uint256 bounty, string description, string submissionHash, uint8 status, uint256 votingEnds, uint256 approveWeight, uint256 rejectWeight)",
+            "function getApprovalPercent(uint256 jobId) view returns (uint256)",
+            "function hasVoted(uint256, address) view returns (bool)",
+            "function createJob(string description) payable returns (uint256)",
+            "function submitWork(uint256 jobId, string submissionHash)",
+            "function vote(uint256 jobId, bool approve)",
+            "function resolveJob(uint256 jobId)",
+            "function claimReward(uint256 jobId)",
+            "function cancelJob(uint256 jobId)"
+        ];
+        
+        const ERC20_ABI = [
+            "function balanceOf(address) view returns (uint256)"
+        ];
+        
+        let provider, signer, contract, tokenContract, userAddress;
+        
+        async function connectWallet() {
+            try {
+                if (!window.ethereum) {
+                    alert('Please install MetaMask or another Web3 wallet');
+                    return;
+                }
+                
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('connectBtn').innerHTML = '<span class="loading"></span>Connecting...';
+                
+                provider = new ethers.BrowserProvider(window.ethereum);
+                
+                // Request account access
+                await provider.send('eth_requestAccounts', []);
+                
+                // Check network
+                const network = await provider.getNetwork();
+                if (network.chainId !== 8453n) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: BASE_CHAIN_ID }]
+                        });
+                    } catch (switchError) {
+                        if (switchError.code === 4902) {
+                            await window.ethereum.request({
+                                method: 'wallet_addEthereumChain',
+                                params: [{
+                                    chainId: BASE_CHAIN_ID,
+                                    chainName: 'Base',
+                                    nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                                    rpcUrls: ['https://mainnet.base.org'],
+                                    blockExplorerUrls: ['https://basescan.org']
+                                }]
+                            });
+                        }
+                    }
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                }
+                
+                signer = await provider.getSigner();
+                userAddress = await signer.getAddress();
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                tokenContract = new ethers.Contract(RELDO_TOKEN, ERC20_ABI, provider);
+                
+                const balance = await tokenContract.balanceOf(userAddress);
+                const reldoBalance = parseFloat(ethers.formatEther(balance)).toFixed(0);
+                
+                document.getElementById('connectBtn').innerHTML = userAddress.slice(0,6) + '...' + userAddress.slice(-4);
+                document.getElementById('walletStatus').innerHTML = `Connected | ${reldoBalance} $RELDO`;
+                document.getElementById('walletStatus').className = 'status connected';
+                
+                loadJobs();
+            } catch (error) {
+                console.error(error);
+                document.getElementById('walletStatus').innerHTML = 'Connection failed: ' + error.message;
+                document.getElementById('walletStatus').className = 'status error';
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('connectBtn').innerHTML = 'Connect Wallet';
+            }
+        }
+        
+        function showPanel(name) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(name + '-panel').classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        const STATUS_NAMES = ['Open', 'Submitted', 'Approved', 'Rejected', 'Cancelled'];
+        const STATUS_CLASSES = ['status-open', 'status-submitted', 'status-approved', 'status-rejected', 'status-cancelled'];
+        
+        async function loadJobs() {
+            if (!contract) return;
+            
+            const jobsList = document.getElementById('jobsList');
+            jobsList.innerHTML = '<div class="empty-state"><span class="loading"></span> Loading jobs...</div>';
+            
+            try {
+                const count = await contract.jobCount();
+                const jobCount = Number(count);
+                
+                if (jobCount === 0) {
+                    jobsList.innerHTML = '<div class="empty-state"><p>No jobs yet. Be the first to create one!</p></div>';
+                    return;
+                }
+                
+                let html = '';
+                for (let i = jobCount; i >= 1; i--) {
+                    const job = await contract.getJob(i);
+                    html += renderJob(i, job);
+                }
+                
+                jobsList.innerHTML = html;
+            } catch (error) {
+                console.error(error);
+                jobsList.innerHTML = '<div class="empty-state"><p>Error loading jobs</p></div>';
+            }
+        }
+        
+        function renderJob(id, job) {
+            const [poster, worker, bounty, description, submissionHash, status, votingEnds, approveWeight, rejectWeight] = job;
+            const statusNum = Number(status);
+            const bountyEth = ethers.formatEther(bounty);
+            const totalWeight = BigInt(approveWeight) + BigInt(rejectWeight);
+            const approvalPct = totalWeight > 0n ? Number((BigInt(approveWeight) * 100n) / totalWeight) : 0;
+            const votingEndsDate = Number(votingEnds) > 0 ? new Date(Number(votingEnds) * 1000).toLocaleString() : '-';
+            const isVotingActive = statusNum === 1 && Date.now() < Number(votingEnds) * 1000;
+            const canResolve = statusNum === 1 && Date.now() >= Number(votingEnds) * 1000;
+            
+            let actions = '';
+            if (statusNum === 0) {
+                actions = `<button onclick="submitWork(${id})">Submit Work</button>`;
+                if (userAddress && poster.toLowerCase() === userAddress.toLowerCase()) {
+                    actions += `<button class="secondary" onclick="cancelJob(${id})">Cancel</button>`;
+                }
+            } else if (isVotingActive) {
+                actions = `<button onclick="voteJob(${id}, true)">Vote Approve</button>
+                          <button class="secondary" onclick="voteJob(${id}, false)">Vote Reject</button>`;
+            } else if (canResolve) {
+                actions = `<button onclick="resolveJob(${id})">Resolve Job</button>`;
+            } else if (statusNum === 2 || statusNum === 3) {
+                actions = `<button class="secondary" onclick="claimReward(${id})">Claim Reward</button>`;
+            }
+            
+            return `
+                <div class="job-card">
+                    <div class="job-header">
+                        <span class="job-id">Job #${id}</span>
+                        <span class="job-status ${STATUS_CLASSES[statusNum]}">${STATUS_NAMES[statusNum]}</span>
+                    </div>
+                    <p class="job-description">${escapeHtml(description)}</p>
+                    <div class="job-meta">
+                        <span>Bounty<span class="value">${parseFloat(bountyEth).toFixed(4)} ETH</span></span>
+                        <span>Poster<span class="value address">${poster.slice(0,6)}...${poster.slice(-4)}</span></span>
+                        ${worker !== '0x0000000000000000000000000000000000000000' ? 
+                            `<span>Worker<span class="value address">${worker.slice(0,6)}...${worker.slice(-4)}</span></span>` : ''}
+                        ${statusNum === 1 ? `<span>Voting Ends<span class="value">${votingEndsDate}</span></span>` : ''}
+                    </div>
+                    ${statusNum >= 1 && submissionHash ? `<p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">Proof: ${escapeHtml(submissionHash)}</p>` : ''}
+                    ${statusNum === 1 ? `
+                        <div class="vote-info">
+                            <span class="approve-text">Approve: ${approvalPct}%</span>
+                            <span class="reject-text">Reject: ${100 - approvalPct}%</span>
+                        </div>
+                        <div class="vote-bar"><div class="approve" style="width: ${approvalPct}%"></div></div>
+                    ` : ''}
+                    <div class="job-actions">${actions}</div>
+                </div>
+            `;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function createJob() {
+            if (!contract) { alert('Connect wallet first'); return; }
+            
+            const description = document.getElementById('jobDescription').value.trim();
+            const bounty = document.getElementById('jobBounty').value;
+            
+            if (!description || !bounty || parseFloat(bounty) <= 0) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            try {
+                const tx = await contract.createJob(description, {
+                    value: ethers.parseEther(bounty)
+                });
+                alert('Transaction submitted! Waiting for confirmation...');
+                await tx.wait();
+                alert('Job created successfully!');
+                document.getElementById('jobDescription').value = '';
+                document.getElementById('jobBounty').value = '';
+                showPanel('jobs');
+                loadJobs();
+            } catch (error) {
+                console.error(error);
+                alert('Error: ' + (error.reason || error.message));
+            }
+        }
+        
+        async function submitWork(jobId) {
+            if (!contract) { alert('Connect wallet first'); return; }
+            
+            const proof = prompt('Enter proof of completion (IPFS hash, URL, or description):');
+            if (!proof) return;
+            
+            try {
+                const tx = await contract.submitWork(jobId, proof);
+                alert('Transaction submitted!');
+                await tx.wait();
+                alert('Work submitted! Voting period started.');
+                loadJobs();
+            } catch (error) {
+                console.error(error);
+                alert('Error: ' + (error.reason || error.message));
+            }
+        }
+        
+        async function voteJob(jobId, approve) {
+            if (!contract) { alert('Connect wallet first'); return; }
+            
+            try {
+                const hasVoted = await contract.hasVoted(jobId, userAddress);
+                if (hasVoted) {
+                    alert('You have already voted on this job');
+                    return;
+                }
+                
+                const tx = await contract.vote(jobId, approve);
+                alert('Transaction submitted!');
+                await tx.wait();
+                alert('Vote recorded!');
+                loadJobs();
+            } catch (error) {
+                console.error(error);
+                alert('Error: ' + (error.reason || error.message));
+            }
+        }
+        
+        async function resolveJob(jobId) {
+            if (!contract) { alert('Connect wallet first'); return; }
+            
+            try {
+                const tx = await contract.resolveJob(jobId);
+                alert('Transaction submitted!');
+                await tx.wait();
+                alert('Job resolved!');
+                loadJobs();
+            } catch (error) {
+                console.error(error);
+                alert('Error: ' + (error.reason || error.message));
+            }
+        }
+        
+        async function claimReward(jobId) {
+            if (!contract) { alert('Connect wallet first'); return; }
+            
+            try {
+                const tx = await contract.claimReward(jobId);
+                alert('Transaction submitted!');
+                await tx.wait();
+                alert('Reward claimed!');
+                loadJobs();
+            } catch (error) {
+                console.error(error);
+                alert('Error: ' + (error.reason || error.message));
+            }
+        }
+        
+        async function cancelJob(jobId) {
+            if (!contract) { alert('Connect wallet first'); return; }
+            
+            if (!confirm('Are you sure you want to cancel this job?')) return;
+            
+            try {
+                const tx = await contract.cancelJob(jobId);
+                alert('Transaction submitted!');
+                await tx.wait();
+                alert('Job cancelled!');
+                loadJobs();
+            } catch (error) {
+                console.error(error);
+                alert('Error: ' + (error.reason || error.message));
+            }
+        }
+        
+        // Handle account changes
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', () => window.location.reload());
+            window.ethereum.on('chainChanged', () => window.location.reload());
+        }
+    </script>
+</body>
+</html>
